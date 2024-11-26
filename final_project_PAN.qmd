@@ -187,21 +187,15 @@ matched_TAVR_data_mortality <- matched_TAVR_data_mortality[matched_TAVR_data_mor
 Competing Risk Modeling:
 
 ```{r}
-#| eval: false
-
 fg <- crr(ftime = matched_TAVR_data_mortality$ftime,
           fstatus = matched_TAVR_data_mortality$Event_name,
+          cov1 = matched_TAVR_data_mortality$valve_type,
           failcode = 1,
           cencode = 0)
+summary(fg)
+# considering adding covariates: cov2 = 
 
-class(matched_TAVR_data_mortality$ftime)
-matched_TAVR_data_mortality$Event_name <- factor(matched_TAVR_data_mortality$Event_name)
-# considering adding covariates: cov1 = ?
-
-# I successfully ran the competing risk model in STATA, where I have more experience, but encountered an intermittent error in R.
-# Error message: Error in `[.data.frame`(d, , (1:nc1) + 3) : undefined columns selected
-# If you have any ideas why this error occurs intermittently, please let me know.
-# Once I resolve the issue, I will run the competing risk model for both matched cohorts, focusing on death and the seven other secondary outcomes.
+# I will run the competing risk model for both matched cohorts, focusing on death and the seven other secondary outcomes.
 
 ```
 
