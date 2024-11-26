@@ -1,0 +1,332 @@
+---
+title: "Your Title"
+subtitle: "BMIN503/EPID600 Final Project"
+author: "Ziwei Pan"
+format: html
+editor: visual
+number-sections: true
+embed-resources: true
+---
+
+------------------------------------------------------------------------
+
+## Overview {#sec-overview}
+
+*I will investigate the impact of different valve procedures on mortality rates among patients with end-stage renal disease (ESRD), while accounting for the competing risk of kidney transplantation. I will clean and filter the Medicare and carrier claim datasets, focusing on patients who have undergone either open-chest aortic or mitral valve replacement (AVR/MVR) or minimally invasive transcatheter aortic valve replacement (TAVR). This analysis aims to utilize logistic regression, survival analysis and competing risk modeling to identify the most suitable valve procedure for ESRD patients based on survival outcomes.*
+
+> <https://github.com/ziwei-selinapan/BMIN503_Final_Project>
+
+## Introduction {#sec-introduction}
+
+*Dialysis patients undergoing surgical aortic valve replacement (SAVR) tend to have poor survival outcomes, with median survival rates often reported at two years or less. Due to the high surgical risks associated with dialysis patients, the best choice of prosthesis—whether bioprosthetic (bAVR) or mechanical (mAVR)—remains a subject of debate. The current guidelines from the ACC/AHA do not favor one type of valve over the other but instead recommend that surgeons consider patient-specific factors, including the risks of bleeding and valve deterioration, when selecting a prosthesis. The increasing use of transcatheter aortic valve replacement (TAVR) has further complicated decision-making for dialysis patients. While earlier studies suggested similar survival rates between bAVR and mAVR in dialysis patients, recent research, including the largest meta-analysis to date, provides conflicting results. Additionally, there is variability in the reported risks of bleeding, reoperation, and stroke. Regarding the comparison of TAVR versus SAVR for dialysis patients, limited research has been conducted in this high-risk group. As such, these inconsistencies and uncertainties necessitate further exploration. This study aims to compare the outcomes of different prosthesis options for isolated de novo aortic valve replacement in dialysis patients, using a large, up-to-date review of Medicare data.*
+
+*The problem of selecting the optimal prosthesis for dialysis patients undergoing aortic valve replacement using statistical model is inherently interdisciplinary, involving medicine, surgery, biostatistics, and health economics. Cardiologists provide insights into the cardiovascular and renal challenges these patients face clinically, while biostatisticians analyze large datasets, such as Medicare and claims data, to evaluate outcomes retrospectively and inform clinical decisions. During meetings with Dr. Waseem Lutfi and faculty from Cardiology, I gained valuable perspectives on how various factors influence prosthesis selection and kidney transplant wait times. Additionally, discussions with Dr. Jesse Y. Hsu helped me gain expertise in data cleaning, as well as refining the model settings for survival analysis and competing risks modeling. This collaboration across disciplines is essential to understanding the complex decision-making process for dialysis patients.*
+
+## Methods {#sec-methods}
+
+Describe the data used and general methodological approach used to address the problem described in the @sec-introduction. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.
+
+```{r}
+# Load necessary libraries
+library(readr)
+library(dplyr)
+library(tidyr)
+library(psych)
+library(MatchIt)  # for propensity score matching
+library(lmtest)   # for propensity score matching
+library(sandwich) # for displaying propensity score matching result
+library(table1)   # automatically generating tables
+library(survival) # for survival analysis
+library(cmprsk)   # for competing risk modeling
+
+```
+
+I began by examining the demographic overview within the database, stratified by the different valve types used in the procedures (i.e., mAVR, bAVR, and TAVR).
+
+```{r}
+
+# Read-in cleaned, anonymized data file:
+cleaned_AVR_data <- read_csv("/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/AVR_all_pts.csv")
+
+
+table(cleaned_AVR_data$SEX)
+table(cleaned_AVR_data$ESRD_year)
+table(cleaned_AVR_data$Elix_score)
+
+# Add labels to valve_type
+cleaned_AVR_data_labeled <- cleaned_AVR_data %>%
+  mutate(
+    valve_type = factor(valve_type, 
+                        levels = c(1, 2, 3),  
+                        labels = c("Mechanical", "Bioprosthetic", "TAVR")),
+    SEX = factor(SEX, levels = c(1, 2), labels = c("Male", "Female")),
+    RACE = factor(RACE, levels = c(0, 1, 2, 3, 4, 5, 6), 
+                  labels = c("Unknown", "White", "Black", "Other", "Asian", 
+                             "Hispanic", "North American Native"))
+  )
+
+# Generate demographic descriptive table (table1)
+table1_AVR <- table1(~ age + SEX + RACE + Elix_score + ESRD_year | valve_type,
+                     data = cleaned_AVR_data_labeled,
+                     overall = FALSE)
+table1_AVR
+
+```
+
+Trend graph:
+
+```{r}
+
+```
+
+I performed pairwise propensity score matching between mAVR and bAVR, as well as between SAVR and TAVR. (Note: SAVR includes both mAVR and bAVR.)
+
+```{r}
+cleaned_mAVRbAVR_data <- cleaned_AVR_data %>%
+  filter(valve_type %in% c("1", "2"))
+cleaned_mAVRbAVR_data$valve_type[cleaned_mAVRbAVR_data$valve_type == 2] <- 0
+
+match_obj <- matchit(valve_type ~ age + SEX + Elix_score +  
+                       Aortic_Stenosis + Aortic_Insufficiency + Aortic_Valve_Disorder +
+                       ESRD_year + CABG + PCI,
+                     data = cleaned_mAVRbAVR_data, method = "nearest", distance = "glm",
+                     ratio = 1,caliper = 0.1,
+                     replace = FALSE)
+
+plot(summary(match_obj), abs = FALSE) 
+# standardized mean differences are all between -0.1 and 0.1 --> good match
+
+matched_SAVR_patients <- get_matches(
+  match_obj,
+  distance = "distance",
+  weights = "weights",
+  subclass = "subclass",
+  id = "id",
+  data = cleaned_mAVRbAVR_data,
+  include.s.weights = TRUE
+) # N = 4926 patients got matched
+
+# Export matched dataset
+write_csv(matched_SAVR_patients, "/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/matched_SAVR_patients.csv")
+
+
+cleaned_SAVRTAVR_data <- cleaned_AVR_data
+cleaned_SAVRTAVR_data$valve_type[cleaned_AVR_data$valve_type == 1 | cleaned_AVR_data$valve_type == 2] <- 0
+cleaned_SAVRTAVR_data$valve_type[cleaned_AVR_data$valve_type == 3] <- 1
+table(cleaned_SAVRTAVR_data$valve_type)
+
+match_obj <- matchit(valve_type ~ age + SEX + Elix_score +  
+                       Aortic_Stenosis + Aortic_Insufficiency + 
+                       Aortic_Valve_Disorder + ESRD_year,
+                     data = cleaned_SAVRTAVR_data, method = "nearest", distance = "glm",
+                     ratio = 1,caliper = 0.1,
+                     replace = FALSE)
+
+plot(summary(match_obj), abs = FALSE) 
+# standardized mean differences are all between -0.1 and 0.1 --> good match
+
+matched_TAVR_patients <- get_matches(
+  match_obj,
+  distance = "distance",
+  weights = "weights",
+  subclass = "subclass",
+  id = "id",
+  data = cleaned_SAVRTAVR_data,
+  include.s.weights = TRUE
+) # N = 7588 patients got matched
+
+# Export matched dataset
+write_csv(matched_TAVR_patients, "/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/matched_TAVR_patients.csv")
+
+```
+
+After obtaining the matched cohort, I revisited the original Medicare dataset to retrieve the patients' admission records following their first valve prosthesis procedure. I then collapsed the data and restructured it to align with the requirements for competing risk modeling.
+
+Following discussions with Dr. Hsu, I decided to use Fine and Gray's competing risk model to analyze patient outcomes. This model is specifically designed to handle situations where multiple types of events can occur, with the occurrence of one event potentially preventing the occurrence of another.
+
+Here I read in the two matched cohorts, and further prepare the data for modeling:
+
+```{r}
+# Read-in propensity matched data:
+matched_TAVR_data_CRM <- read_csv("/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/TAVR_CoxModel_matched.csv")
+matched_SAVR_data_CRM <- read_csv("/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/SAVR_CoxModel_matched.csv")
+
+matched_TAVR_data_CRM <- matched_TAVR_data_CRM %>%
+  mutate(Event_name = replace_na(Event_name, 0))
+matched_SAVR_data_CRM <- matched_SAVR_data_CRM %>%
+  mutate(Event_name = replace_na(Event_name, 0))
+
+# Displaying all the Event_name included: 0-9 
+# 0 represent patients who did not die by the end of 2019
+# 1 represent patietns who died
+# 2 represent patients who got kidney transplant - the competing risk factor
+# 3-9 represent seven different secondary outcomes
+table(matched_TAVR_data_CRM$Event_name) 
+table(matched_SAVR_data_CRM$Event_name)
+
+# Competing risk modeling: Fine and Gray's model
+# Failcode = 1, represent death (we are looking at mortality as primary outcome)
+# cencode = 0, meaning I'm cencoring out patients who did not die
+matched_TAVR_data_mortality <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2))
+
+
+matched_TAVR_data_mortality$ftime <- matched_TAVR_data_mortality$Event_date - matched_TAVR_data_mortality$Procedure_date
+
+# Replace ndays_after_procedure when Event_date is missing (NA in R)
+matched_TAVR_data_mortality$ftime[is.na(matched_TAVR_data_mortality$Event_date)] <- 21915 - matched_TAVR_data_mortality$Procedure_date[is.na(matched_TAVR_data_mortality$Event_date)]
+
+# Replace ndays_after_procedure with 0.1 if it's exactly 0
+matched_TAVR_data_mortality$ftime[matched_TAVR_data_mortality$ftime == 0] <- 0.1
+
+# Remove rows where ndays_after_procedure is less than 0: removed zero
+matched_TAVR_data_mortality <- matched_TAVR_data_mortality[matched_TAVR_data_mortality$ftime >= 0, ]
+
+```
+
+Competing Risk Modeling:
+
+```{r}
+#| eval: false
+
+fg <- crr(ftime = matched_TAVR_data_mortality$ftime,
+          fstatus = matched_TAVR_data_mortality$Event_name,
+          failcode = 1,
+          cencode = 0)
+
+class(matched_TAVR_data_mortality$ftime)
+matched_TAVR_data_mortality$Event_name <- factor(matched_TAVR_data_mortality$Event_name)
+# considering adding covariates: cov1 = ?
+
+# I successfully ran the competing risk model in STATA, where I have more experience, but encountered an intermittent error in R.
+# Error message: Error in `[.data.frame`(d, , (1:nc1) + 3) : undefined columns selected
+# If you have any ideas why this error occurs intermittently, please let me know.
+# Once I resolve the issue, I will run the competing risk model for both matched cohorts, focusing on death and the seven other secondary outcomes.
+
+```
+
+Supplemental Material:
+
+Code for Data Cleaning
+
+This set of codes cannot be executed locally on my personal computer. The dataset is only accessible through UPenn PMACS HSRDC - a virtual platform to ensure data security and maintain confidentiality.
+
+```{r}
+#| eval: false
+
+
+# Load data (replace this with your actual data loading code)
+# ESRD_patients_medpar <- read.csv("path_to_your_data.csv")
+
+# Define inclusion criteria: AVR
+temp0521_1 <- ESRD_patients_medpar %>%
+  mutate(
+    DGNS_CD25 = DGNS_25_CD,
+    Mechanical_AVR = 0,
+    Bioprosthetic_AVR = 0,
+    TAVR = 0,
+    Procedure_date = NA
+  ) %>%
+  rowwise() %>%
+  mutate(
+    Mechanical_AVR = ifelse(any(c_across(starts_with("PRCDR_CD")) %in% c("3522", "02RF0JZ")), 1, 0),
+    Bioprosthetic_AVR = ifelse(any(c_across(starts_with("PRCDR_CD")) %in% c("3521", "02RF07Z", "02RF08Z", "02RF0KZ")), 1, 0),
+    TAVR = ifelse(
+      any(substr(c_across(starts_with("PRCDR_CD")), 1, 5) %in% c("02RF3", "02RF4")) |
+      any(substr(c_across(starts_with("PRCDR_CD")), 1, 4) %in% c("3505", "3506")), 
+      1, 
+      0
+    ),
+    Procedure_date = case_when(
+      Mechanical_AVR == 1 ~ c_across(starts_with("PRCDR_DT"))[match("3522", c_across(starts_with("PRCDR_CD")))],
+      Bioprosthetic_AVR == 1 ~ c_across(starts_with("PRCDR_DT"))[match("3521", c_across(starts_with("PRCDR_CD")))],
+      TAVR == 1 ~ c_across(starts_with("PRCDR_DT"))[match(TRUE, substr(c_across(starts_with("PRCDR_CD")), 1, 5) %in% c("02RF3", "02RF4"))]
+    )
+  ) %>%
+  ungroup()
+
+# Filter rows where Mechanical_AVR, Bioprosthetic_AVR, and TAVR are all zero
+temp0606 <- temp0521_1 %>%
+  filter(!(Mechanical_AVR == 0 & Bioprosthetic_AVR == 0 & TAVR == 0))
+
+# Process temp0606 to create temp0606_1
+temp0606_1 <- temp0606 %>%
+  mutate(
+    multiple_valves = if_else(Mechanical_AVR + Bioprosthetic_AVR + TAVR > 1, 1, 0),
+    exclu_comorbidity = 0
+  ) %>%
+  rowwise() %>%
+  mutate(
+    # Mark excluded comorbidities for PRCDR_CD variables
+    exclu_comorbidity = if_else(
+      any(c_across(starts_with("PRCDR_CD")) %in% c(
+        "3523", "3524", "3510", "3511", "3513", "3514", "3527", "3528",
+        "3507", "3508", "3525", "3526", "3804", "3814", "3834", "3844", "3845",
+        "3864", "3971", "3973", "3978", "3509", "3520", "3596", "336", "3751",
+        "3752", "375", "3753", "3754", "3755", "3760", "3762", "3763", "3765",
+        "3766", "3768", "02RG0JZ", "02RG07Z", "02RG08Z", "02RG0KZ", "02QF", 
+        "02QH", "02WJ", "02RH", "02RJ", "02RX", "02RW", "02QX", "02QR", "02VX",
+        "02VW", "02HX", "02HW", "04R0", "04Q0", "04V0", "04H0", "X2RF032", 
+        "02HA0QZ", "02HA0RJ", "02HA0RS", "02HA0RZ", "02HA3QZ", "02HA3RJ", 
+        "02HA3RS", "02HA3RZ", "02HA4QZ", "02HA4RJ", "02HA4RS", "02HA4RZ", 
+        "02RK07Z", "02RK08Z", "02RK0JZ", "02RK0KZ", "02RK47", "02RK47Z", 
+        "02RK48Z", "02RK4JZ", "02RK4KZ", "02RL07Z", "02RL08Z", "02RL0JZ", 
+        "02RL0KZ", "02RL47Z", "02RL48Z", "02RL4JZ", "02RL4KZ", "02UA0JZ", 
+        "02UA3JZ", "02UA4JZ", "02WA0JZ", "02WA0QZ", "02WA3QZ", "02YA0Z0", 
+        "02YA0Z1", "02YA0Z2", "5A02116", "5A0211D"
+      ) |
+      substr(c_across(starts_with("PRCDR_CD")), 1, 4) %in% c(
+        "3523", "3524", "3510", "3511", "3513", "3514", "3527", "3528",
+        "3507", "3508", "3525", "3526", "3804", "3814", "3834", "3844", "3845",
+        "3864", "3971", "3973", "3978", "3509", "3520", "3596", "336", "3751",
+        "3752", "375", "3753", "3754", "3755", "3760", "3762", "3763", "3765",
+        "3766", "3768", "02QF", "02QH", "02WJ", "02RH", "02RJ", "02RX", "02RW",
+        "02QX", "02QR", "02VX", "02VW", "02HX", "02HW", "04R0", "04Q0", "04V0",
+        "04H0"
+      ) |
+      substr(c_across(starts_with("PRCDR_CD")), 1, 3) %in% c("336", "375")),
+      1, exclu_comorbidity
+    ),
+    # Mark excluded comorbidities for DGNS_CD variables
+    exclu_comorbidity = if_else(
+      any(c_across(starts_with("DGNS_CD")) %in% c(
+        "421", "4210", "4219", "4211", "4249", "42499", "42490", "42491",
+        "11281", "03642", "09884", "11404", "11515", "11594", "I33", "I330", 
+        "I339", "I38", "I39", "A3951", "B376"
+      ) |
+      substr(c_across(starts_with("DGNS_CD")), 1, 4) %in% c(
+        "4210", "4219", "4211", "4249", "I330", "I339", "B376"
+      ) |
+      substr(c_across(starts_with("DGNS_CD")), 1, 3) %in% c("421", "I33", "I38", "I39")),
+      1, exclu_comorbidity
+    )
+  ) %>%
+  ungroup() %>%
+  select(-c(i)) # Drop intermediate variable `i`
+
+# Create valve_AVR_0606
+valve_AVR_0606 <- temp0606_1 %>%
+  filter(multiple_valves == 0, exclu_comorbidity == 0)
+```
+
+## Results {#sec-results}
+
+Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the @sec-methods as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you'd like, but this is not required.
+
+After patient selection, 15,081 patients were included for analysis; the average age was 69.1 years, 66.4% of patients were male, 67.1% were white, 23.4% were black, and the mean years on dialysis at the time of AVR was 4.6 years. Table 1 demonstrates the cohort characteristics by AVR type prior to propensity score matching. 2,590 patients underwent mAVR, 4,752 bAVR, and 7,739 TAVR; respectively, the mean ages were 61.5, 66.6, and 73.2 years (P\<0.001) and mean Elixhauser scores were 9.2, 9.7, and 11.3 (P\<0.001) indicating that mAVR patients were the youngest and with fewer comorbidities while TAVR patients were the oldest with highest comorbidity burden. 1,080 (41.7%) mAVR patients had a concomitant coronary artery bypass graft compared to 2,264 (47.7%) bAVR, and rates of percutaneous coronary intervention within 3 months of AVR were 359 (13.9%), 684 (14.4%) and 1,788 (23.1%) for mAVR, bAVR, and TAVR respectfully.
+
+The trend of AVR type from 2009 to 2019 shows that there is a rapid increase in the number of TAVR procedures while the number of bAVR and mAVR decrease over the period studied. By 2015, the number of TAVR procedures is greater than the number of bAVR and mAVR combined.
+
+Five-Year Rates of Long-Term Secondary Outcomes Prior to Propensity Score Matching The total rate of readmission for bleeding complications was high across the entire cohort (42.6%) which included cerebral hemorrhage (2.6%), GI bleeding (25.7%) and other bleeding (35.7%). The overall rate of CHF readmission was (7.9%), endocarditis was (7.7%) and stroke was (12.4%). Overall rates of valve reoperation (2.5%) and kidney transplantation (3.6%) were low.
+
+**mAVR versus bAVR Matching and Outcomes**
+
+Figure x shows the standardized mean differences amongst matched covariates, indicating a well-balanced match. Matching yielded 2,463 patients in each group. There was no difference between mAVR or bAVR matched cohorts in terms of immediate post-surgical outcomes. Figures x show the cumulative incidence curves for the long-term secondary outcomes; Table x shows the cumulative incidences of secondary outcomes at 5 years. Compared to mAVR, at 5 years of follow-up bAVR patients were more likely to have valve reoperation, less likely to have readmission for GI bleeding, but similar cumulative incidence of ischemic stroke readmission, CHF readmission, endocarditis readmission, and kidney transplant. Table x shows the cumulative incidences at 5 years.
+
+**SAVR versus TAVR Matching and Outcomes**
+
+Figure x shows the standardized mean differences amongst matched covariates, indicating a well-balanced match. Matching yielded 3,796 patients in each group. Supplemental Table 3 shows cohort characteristics after matching. Of note, of the 3,796 SAVR patients, n (n%) patients had mAVR and n (n%) had bAVR. Table x shows the immediate postoperative outcomes by AVR type. Compared to SAVR, TAVR had lower rates of cardiac arrest, GI hemorrhage, RBC transfusion, new atrial fibrillation, and thirty-day mortality, but higher rates of complete heart block and permanent pacemaker placement.
+
+## Conclusion
+
+This the conclusion. The @sec-results can be invoked here.
