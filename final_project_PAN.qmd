@@ -1,5 +1,5 @@
 ---
-title: "Your Title"
+title: "Outcomes in ESRD Patients Following Valve Replacement: Comparing Mechanical, Bioprosthetic, and TAVR Options"
 subtitle: "BMIN503/EPID600 Final Project"
 author: "Ziwei Pan"
 format: html
@@ -12,19 +12,21 @@ embed-resources: true
 
 ## Overview {#sec-overview}
 
-*I will investigate the impact of different valve procedures on mortality rates among patients with end-stage renal disease (ESRD), while accounting for the competing risk of kidney transplantation. I will clean and filter the Medicare and carrier claim datasets, focusing on patients who have undergone either open-chest aortic or mitral valve replacement (AVR/MVR) or minimally invasive transcatheter aortic valve replacement (TAVR). This analysis aims to utilize logistic regression, survival analysis and competing risk modeling to identify the most suitable valve procedure for ESRD patients based on survival outcomes.*
+I investigated the impact of different valve procedures on mortality rates among patients with end-stage renal disease (ESRD), while accounting for the competing risk of kidney transplantation. I cleaned and filtered the Medicare and carrier claim datasets, focusing on patients who have undergone open-chest aortic valve replacement (mechanical AVR/ bioprosthetic AVR) or minimally invasive transcatheter aortic valve replacement (TAVR). This analysis aims to utilize survival analysis and competing risk modeling to identify the most suitable valve procedure for ESRD patients based on survival outcomes.
 
 > <https://github.com/ziwei-selinapan/BMIN503_Final_Project>
 
 ## Introduction {#sec-introduction}
 
-*Dialysis patients undergoing surgical aortic valve replacement (SAVR) tend to have poor survival outcomes, with median survival rates often reported at two years or less. Due to the high surgical risks associated with dialysis patients, the best choice of prosthesis—whether bioprosthetic (bAVR) or mechanical (mAVR)—remains a subject of debate. The current guidelines from the ACC/AHA do not favor one type of valve over the other but instead recommend that surgeons consider patient-specific factors, including the risks of bleeding and valve deterioration, when selecting a prosthesis. The increasing use of transcatheter aortic valve replacement (TAVR) has further complicated decision-making for dialysis patients. While earlier studies suggested similar survival rates between bAVR and mAVR in dialysis patients, recent research, including the largest meta-analysis to date, provides conflicting results. Additionally, there is variability in the reported risks of bleeding, reoperation, and stroke. Regarding the comparison of TAVR versus SAVR for dialysis patients, limited research has been conducted in this high-risk group. As such, these inconsistencies and uncertainties necessitate further exploration. This study aims to compare the outcomes of different prosthesis options for isolated de novo aortic valve replacement in dialysis patients, using a large, up-to-date review of Medicare data.*
+Dialysis patients undergoing surgical aortic valve replacement (SAVR) tend to have poor survival outcomes, with median survival rates often reported at two years or less. Due to the high surgical risks associated with dialysis patients, the best choice of prosthesis—whether bioprosthetic (bAVR) or mechanical (mAVR)—remains a subject of debate. The current guidelines from the ACC/AHA do not favor one type of valve over the other but instead recommend that surgeons consider patient-specific factors, including the risks of bleeding and valve deterioration, when selecting a prosthesis. The increasing use of transcatheter aortic valve replacement (TAVR) has further complicated decision-making for dialysis patients. While earlier studies suggested similar survival rates between bAVR and mAVR in dialysis patients, recent research, including the largest meta-analysis to date, provides conflicting results. Additionally, there is variability in the reported risks of bleeding, reoperation, and stroke. Regarding the comparison of TAVR versus SAVR for dialysis patients, limited research has been conducted in this high-risk group. As such, these inconsistencies and uncertainties necessitate further exploration. This study aims to compare the outcomes of different prosthesis options for isolated de novo aortic valve replacement in dialysis patients, using a large, up-to-date review of Medicare data.
 
-*The problem of selecting the optimal prosthesis for dialysis patients undergoing aortic valve replacement using statistical model is inherently interdisciplinary, involving medicine, surgery, biostatistics, and health economics. Cardiologists provide insights into the cardiovascular and renal challenges these patients face clinically, while biostatisticians analyze large datasets, such as Medicare and claims data, to evaluate outcomes retrospectively and inform clinical decisions. During meetings with Dr. Waseem Lutfi and faculty from Cardiology, I gained valuable perspectives on how various factors influence prosthesis selection and kidney transplant wait times. Additionally, discussions with Dr. Jesse Y. Hsu helped me gain expertise in data cleaning, as well as refining the model settings for survival analysis and competing risks modeling. This collaboration across disciplines is essential to understanding the complex decision-making process for dialysis patients.*
+The problem of selecting the optimal prosthesis for dialysis patients undergoing aortic valve replacement using statistical model is inherently interdisciplinary, involving medicine, surgery, biostatistics, pharmacy, and health economics. Cardiologists provide insights into the cardiovascular and renal challenges these patients face clinically, while biostatisticians analyze large datasets, such as Medicare and claims data, to evaluate outcomes retrospectively and inform clinical decisions. During meetings with Dr. Waseem Lutfi and faculty from Cardiology, I gained valuable perspectives on how various factors influence prosthesis selection and kidney transplant wait times. Additionally, discussions with Dr. Jesse Y. Hsu helped me gain expertise in data cleaning, as well as refining the model settings for survival analysis and competing risks modeling. This collaboration across disciplines is essential to understanding the complex decision-making process for dialysis patients.
 
 ## Methods {#sec-methods}
 
-Describe the data used and general methodological approach used to address the problem described in the @sec-introduction. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.
+The Medicare MedPar and denominator files from 2009 to 2019 were queried for all adult patients \>18 years old with ESRD who underwent bAVR, mAVR, and TAVR. Of note, 2009 had only 6 months of data available. International Classification of Diseases (ICD) versions 9 and 10 Procedure Coding System (PCS) codes from inpatient MedPar claims were used to select for AVR procedures. The denominator file ESRD classification was used to identify patients with ESRD; since the ESRD classification is recorded per calendar year, patients were required to have ESRD in the year of surgery and at least the year prior to surgery to ensure that they had ESRD at the time of surgery and did not develop ESRD after surgery. For patients who did not have ESRD recorded for the year prior to surgery, the “MDCR_STATUS_CODE” variable available only from 2015 to 2019 was used to identify further patients with ESRD at least 6 months prior to surgery. Further, Medicare carrier files were used to include additional patients who had outpatient dialysis claims in the six months prior to surgery. Patients were excluded if they underwent concomitant mitral, tricuspid, pulmonic valve or aortic arch procedure, or had infective endocarditis. In supplemental materials I displays portion of the codes for these exclusion criteira.
+
+A retrospective cohort study was conducted with the exposure of AVR type, namely bAVR, mAVR, and TAVR. Two parallel but separate comparisons were made: first comparing bAVR to mAVR, then comparing SAVR (bAVR + mAVR) to TAVR. The primary outcome was overall survival up to five years. Secondary outcomes included long-term secondary outcomes up to five years. Long-term secondary outcomes were aortic valve reoperation (TAVR or SAVR), readmissions for: congestive heart failure, endocarditis, GI bleeding and other bleeding complications, cerebral hemorrhage, ischemic stroke, and kidney transplant.
 
 ```{r}
 # Load necessary libraries
@@ -32,6 +34,8 @@ library(readr)
 library(dplyr)
 library(tidyr)
 library(psych)
+library(ggplot2)
+library(ggthemes)
 library(MatchIt)  # for propensity score matching
 library(lmtest)   # for propensity score matching
 library(sandwich) # for displaying propensity score matching result
@@ -41,13 +45,14 @@ library(cmprsk)   # for competing risk modeling
 
 ```
 
-I began by examining the demographic overview within the database, stratified by the different valve types used in the procedures (i.e., mAVR, bAVR, and TAVR).
+### Descriptive Statistics
+
+I began by examining the demographic overview within the database, stratified by the different valve types used in the procedures (i.e., mAVR, bAVR, and TAVR). I used the table1 function to generate a descriptive demographic table.
 
 ```{r}
 
 # Read-in cleaned, anonymized data file:
 cleaned_AVR_data <- read_csv("/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/AVR_all_pts.csv")
-
 
 table(cleaned_AVR_data$SEX)
 table(cleaned_AVR_data$ESRD_year)
@@ -66,26 +71,83 @@ cleaned_AVR_data_labeled <- cleaned_AVR_data %>%
   )
 
 # Generate demographic descriptive table (table1)
-table1_AVR <- table1(~ age + SEX + RACE + Elix_score + ESRD_year | valve_type,
+table1_AVR <- table1(~ age + SEX + RACE + Elix_score + ESRD_year + CABG + PCI | valve_type,
                      data = cleaned_AVR_data_labeled,
                      overall = FALSE)
-table1_AVR
 
 ```
 
-Trend graph:
+I then aggregate data to year and valve type level.
+
+I plot a line graph displaying the yearly trend in the count of patients who chose each type of valve prosthesis. I also produce boxplots to show the distribution of patients' Elixhauser scores (n = number of previous and present comorbidities) and age, which are two aspects crucial to predicting patients' mortality outcomes.
 
 ```{r}
+# Aggregate data to YEAR & valve_type level
+aggregate_by_year <- cleaned_AVR_data_labeled %>%
+  group_by(YEAR, valve_type) %>%
+  summarize(patient_count = n_distinct(BENE_ID), .groups = "drop")
+
+# Plot line graphs displaying yearly trend for number of patients of each procedure
+year_trend <- ggplot(aggregate_by_year, aes(x = YEAR, y = patient_count, color = valve_type, group = valve_type)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  labs(
+    title = "Yearly Trends by Valve Type",
+    x = "Year",
+    y = "Number of Patients",
+    color = "Valve Type"
+  ) +
+  scale_x_continuous(breaks = seq(min(aggregate_by_year$YEAR), max(aggregate_by_year$YEAR), by = 1)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 13)
+  )
+
+# Distribution of Elixhauser score by valve_type - patients who had TAVR had the highest Elixhauser comorbidity score, indicating that they are potentially the most sick.
+Elix_boxplot <- ggplot(cleaned_AVR_data_labeled, aes(x = valve_type, y = Elix_score, fill = valve_type)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Elixhauser Scores by Valve Type",
+    x = "Valve Type",
+    y = "Elixhauser Score"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Distribution of age by valve_type - TAVR has the oldest patients, which might affect the interpretation of mortality model
+age_boxplot <- ggplot(cleaned_AVR_data_labeled, aes(x = valve_type, y = age, fill = valve_type)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Age by Valve Type",
+    x = "Valve Type",
+    y = "Elixhauser Score"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
 
 ```
 
-I performed pairwise propensity score matching between mAVR and bAVR, as well as between SAVR and TAVR. (Note: SAVR includes both mAVR and bAVR.)
+### Propensity Score Matching
+
+Baseline cohort characteristics were compared using Student’s t-tests for continuous variables and chi-squared tests for categorical variables. One to one (1:1) propensity score matching was used to match for all previously mentioned covariates between comparison groups (bAVR versus mAVR, TAVR versus SAVR) with one stipulation; in the SAVR to TAVR comparison CABG and PCI matching were excluded due to the lack of PCI history in TAVR's patients. I performed 1:1 matching using greedy nearest neighbor matching without replacement with a caliper width of 0.1.
+
+Love plots demonstrating standardized mean differences before and after matching were used to assess matching balance of covariates with a 10% mean standardized difference cutoff for covariate match acceptability.
+
+The first matching graph shows the standardized mean differences pre and post matching for mAVR and bAVR patients amongst matched covariates, indicating a well-balanced match. Matching yielded 2,463 patients in each group.
+
+The second matching graph shows the standardized mean differences pre and post matching for SAVR and TAVR patients amongst matched covariates, indicating a well-balanced match. Matching yielded 3,796 patients in each group.
 
 ```{r}
+##### Matching between mAVR and bAVR #####
+# Keep only mechanical and bioprothetic AVR procedures, then do matching between mAVR and bAVR:
 cleaned_mAVRbAVR_data <- cleaned_AVR_data %>%
   filter(valve_type %in% c("1", "2"))
+# Assign bioprothetic = 0, mechanical = 1
 cleaned_mAVRbAVR_data$valve_type[cleaned_mAVRbAVR_data$valve_type == 2] <- 0
 
+# Matching
 match_obj <- matchit(valve_type ~ age + SEX + Elix_score +  
                        Aortic_Stenosis + Aortic_Insufficiency + Aortic_Valve_Disorder +
                        ESRD_year + CABG + PCI,
@@ -93,9 +155,11 @@ match_obj <- matchit(valve_type ~ age + SEX + Elix_score +
                      ratio = 1,caliper = 0.1,
                      replace = FALSE)
 
-plot(summary(match_obj), abs = FALSE) 
-# standardized mean differences are all between -0.1 and 0.1 --> good match
+# Plot the pre and post effects of propensity scores
+matchplot_mAVRbAVR <- plot(summary(match_obj), abs = FALSE) 
+# The standardized mean differences are all between -0.1 and 0.1 --> good match
 
+# Export matched data
 matched_SAVR_patients <- get_matches(
   match_obj,
   distance = "distance",
@@ -106,10 +170,11 @@ matched_SAVR_patients <- get_matches(
   include.s.weights = TRUE
 ) # N = 4926 patients got matched
 
-# Export matched dataset
+# Save to csv file
 write_csv(matched_SAVR_patients, "/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/matched_SAVR_patients.csv")
 
-
+##### Matching between SAVR and TAVR #####
+# Group mAVR and bAVR together as SAVR, then do matching with TAVR.
 cleaned_SAVRTAVR_data <- cleaned_AVR_data
 cleaned_SAVRTAVR_data$valve_type[cleaned_AVR_data$valve_type == 1 | cleaned_AVR_data$valve_type == 2] <- 0
 cleaned_SAVRTAVR_data$valve_type[cleaned_AVR_data$valve_type == 3] <- 1
@@ -122,7 +187,8 @@ match_obj <- matchit(valve_type ~ age + SEX + Elix_score +
                      ratio = 1,caliper = 0.1,
                      replace = FALSE)
 
-plot(summary(match_obj), abs = FALSE) 
+# Plot the pre and post effects of propensity scores
+matchplot_SAVRTAVR <- plot(summary(match_obj), abs = FALSE) 
 # standardized mean differences are all between -0.1 and 0.1 --> good match
 
 matched_TAVR_patients <- get_matches(
@@ -151,11 +217,50 @@ Here I read in the two matched cohorts, and further prepare the data for modelin
 matched_TAVR_data_CRM <- read_csv("/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/TAVR_CoxModel_matched.csv")
 matched_SAVR_data_CRM <- read_csv("/Users/selinapan/Desktop/UPenn/Biomedical Informatics Certificate/BMIN5030/BMIN503_Final_Project/SAVR_CoxModel_matched.csv")
 
+# TAVR = 1, SAVR = 0
+matched_TAVR_data_CRM$valve_type[matched_TAVR_data_CRM$valve_type == 1 | matched_TAVR_data_CRM$valve_type == 2] <- 0
+matched_TAVR_data_CRM$valve_type[matched_TAVR_data_CRM$valve_type == 3] <- 1
+table(matched_TAVR_data_CRM$valve_type)
+# mAVR = 1, bAVR = 0
+matched_SAVR_data_CRM$valve_type[matched_SAVR_data_CRM$valve_type == 2] <- 0
+
+# Mark patients who survived --> Event_name == 0
 matched_TAVR_data_CRM <- matched_TAVR_data_CRM %>%
   mutate(Event_name = replace_na(Event_name, 0))
 matched_SAVR_data_CRM <- matched_SAVR_data_CRM %>%
   mutate(Event_name = replace_na(Event_name, 0))
 
+# Calculate ftime = Event_date (death date or secondary procedure date) - Procedure_date (initial valve procedure date)
+matched_TAVR_data_CRM$ftime <- matched_TAVR_data_CRM$Event_date - matched_TAVR_data_CRM$Procedure_date
+matched_SAVR_data_CRM$ftime <- matched_SAVR_data_CRM$Event_date - matched_SAVR_data_CRM$Procedure_date
+
+# Replace ftime when Event_date is missing (NA) and Event_name == 0
+# If a patient has Event_name == 0, it means that they did not die until the end time of dataset (end of 2019).
+# So I am replacing their ftime = 21915 - Procedure date.
+# 21915 represent the last day of 2019.
+# (Note: This dataset stores some of the dates as continuous numbers, 
+# it assumes Jan. 1st 1960 as 0,
+# On average there are 365.25 days in a year,
+# 21915 / 365.25 = 60, 1960 + 60 = 2020
+# so 21915 represent the last day of 2019)
+matched_TAVR_data_CRM$ftime[is.na(matched_TAVR_data_CRM$Event_date) & matched_TAVR_data_CRM$Event_name == 0] <- 21915 - matched_TAVR_data_CRM$Procedure_date[is.na(matched_TAVR_data_CRM$Event_date)]
+summary(matched_TAVR_data_CRM$ftime)
+
+matched_SAVR_data_CRM$ftime[is.na(matched_SAVR_data_CRM$Event_date) & matched_SAVR_data_CRM$Event_name == 0] <- 21915 - matched_SAVR_data_CRM$Procedure_date[is.na(matched_SAVR_data_CRM$Event_date)]
+summary(matched_SAVR_data_CRM$ftime)
+
+# Replace ndays_after_procedure with 0.1 if it's exactly 0
+matched_TAVR_data_CRM$ftime[matched_TAVR_data_CRM$ftime == 0] <- 0.1
+matched_SAVR_data_CRM$ftime[matched_SAVR_data_CRM$ftime == 0] <- 0.1
+
+
+```
+
+### Competing Risk Modeling
+
+Mortality and long-term secondary outcomes were compared using Fine‐Gray subdistribution hazard models with death and kidney transplant as a competing risk and displayed using cumulative incidence functions up to five years (7)
+
+```{r}
 # Displaying all the Event_name included: 0-9 
 # 0 represent patients who did not die by the end of 2019
 # 1 represent patietns who died
@@ -167,47 +272,564 @@ table(matched_SAVR_data_CRM$Event_name)
 # Competing risk modeling: Fine and Gray's model
 # Failcode = 1, represent death (we are looking at mortality as primary outcome)
 # cencode = 0, meaning I'm cencoring out patients who did not die
+
+##### SAVR vs TAVR #####
 matched_TAVR_data_mortality <- matched_TAVR_data_CRM %>%
   filter(Event_name %in% c(0, 1, 2))
 
-
-matched_TAVR_data_mortality$ftime <- matched_TAVR_data_mortality$Event_date - matched_TAVR_data_mortality$Procedure_date
-
-# Replace ndays_after_procedure when Event_date is missing (NA in R)
-matched_TAVR_data_mortality$ftime[is.na(matched_TAVR_data_mortality$Event_date)] <- 21915 - matched_TAVR_data_mortality$Procedure_date[is.na(matched_TAVR_data_mortality$Event_date)]
-
-# Replace ndays_after_procedure with 0.1 if it's exactly 0
-matched_TAVR_data_mortality$ftime[matched_TAVR_data_mortality$ftime == 0] <- 0.1
-
-# Remove rows where ndays_after_procedure is less than 0: removed zero
-matched_TAVR_data_mortality <- matched_TAVR_data_mortality[matched_TAVR_data_mortality$ftime >= 0, ]
-
-```
-
-Competing Risk Modeling:
-
-```{r}
-fg <- crr(ftime = matched_TAVR_data_mortality$ftime,
+fg_TAVR_mort <- crr(ftime = matched_TAVR_data_mortality$ftime,
           fstatus = matched_TAVR_data_mortality$Event_name,
           cov1 = matched_TAVR_data_mortality$valve_type,
           failcode = 1,
           cencode = 0)
-summary(fg)
-# considering adding covariates: cov2 = 
+# considering adding covariates in the future: cov2 = ?
 
-# I will run the competing risk model for both matched cohorts, focusing on death and the seven other secondary outcomes.
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_mortality$ftime, 
+              fstatus = matched_TAVR_data_mortality$Event_name, 
+              group = matched_TAVR_data_mortality$valve_type)
+# Plot cumulative incidence
+png("TAVR_mort_cif.png", width = 800, height = 600)
+TAVR_mort_cif <- plot(cif, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off()  
+
+##### mAVR vs bAVR #####
+matched_SAVR_data_mortality <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2))
+
+fg_SAVR_mort <- crr(ftime = matched_SAVR_data_mortality$ftime,
+          fstatus = matched_SAVR_data_mortality$Event_name,
+          cov1 = matched_SAVR_data_mortality$valve_type,
+          failcode = 1,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_mortality$ftime, 
+              fstatus = matched_SAVR_data_mortality$Event_name, 
+              group = matched_SAVR_data_mortality$valve_type)
+# Plot cumulative incidence
+png("SAVR_mort_cif.png", width = 800, height = 600)
+SAVR_mort_cif <- plot(cif, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off()  
+```
+
+Secondary outcomes:
+
+```{r}
+
+###################################
+#####      mAVR vs. bAVR      #####
+###################################
+
+##### Reoperation #####
+matched_SAVR_data_reop <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 3))
+
+fg_savr_reop <- crr(ftime = matched_SAVR_data_reop$ftime,
+          fstatus = matched_SAVR_data_reop$Event_name,
+          cov1 = matched_SAVR_data_reop$valve_type,
+          failcode = 3,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_reop$ftime, 
+              fstatus = matched_SAVR_data_reop$Event_name, 
+              group = matched_SAVR_data_reop$valve_type)
+cif_subset <- cif[grep(paste0(" ", 3), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_reop_cif.png", width = 800, height = 600)
+SAVR_reop_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.08),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off()  
+
+##### Readmission for Congestive Heart Failure (CHF) #####
+matched_SAVR_data_CHF <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 4))
+
+fg_savr_CHF <- crr(ftime = matched_SAVR_data_CHF$ftime,
+          fstatus = matched_SAVR_data_CHF$Event_name,
+          cov1 = matched_SAVR_data_CHF$valve_type,
+          failcode = 4,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_CHF$ftime, 
+              fstatus = matched_SAVR_data_CHF$Event_name, 
+              group = matched_SAVR_data_CHF$valve_type)
+cif_subset <- cif[grep(paste0(" ", 4), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_CHF_cif.png", width = 800, height = 600)
+SAVR_CHF_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.2),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Endocarditis #####
+matched_SAVR_data_endo <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 5))
+
+fg_savr_endo <- crr(ftime = matched_SAVR_data_endo$ftime,
+          fstatus = matched_SAVR_data_endo$Event_name,
+          cov1 = matched_SAVR_data_endo$valve_type,
+          failcode = 5,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_endo$ftime, 
+              fstatus = matched_SAVR_data_endo$Event_name, 
+              group = matched_SAVR_data_endo$valve_type)
+cif_subset <- cif[grep(paste0(" ", 5), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_endo_cif.png", width = 800, height = 600)
+SAVR_endo_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.15),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Cerebral Hemorrhage #####
+matched_SAVR_data_cerebral <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 6))
+
+fg_savr_cerebral <- crr(ftime = matched_SAVR_data_cerebral$ftime,
+          fstatus = matched_SAVR_data_cerebral$Event_name,
+          cov1 = matched_SAVR_data_cerebral$valve_type,
+          failcode = 6,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_cerebral$ftime, 
+              fstatus = matched_SAVR_data_cerebral$Event_name, 
+              group = matched_SAVR_data_cerebral$valve_type)
+cif_subset <- cif[grep(paste0(" ", 6), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_cerebral_cif.png", width = 800, height = 600)
+SAVR_cerebral_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.08),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for GI Bleeding #####
+matched_SAVR_data_GI <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 7))
+
+fg_savr_GI <- crr(ftime = matched_SAVR_data_GI$ftime,
+          fstatus = matched_SAVR_data_GI$Event_name,
+          cov1 = matched_SAVR_data_GI$valve_type,
+          failcode = 7,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_GI$ftime, 
+              fstatus = matched_SAVR_data_GI$Event_name, 
+              group = matched_SAVR_data_GI$valve_type)
+cif_subset <- cif[grep(paste0(" ", 7), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_GI_cif.png", width = 800, height = 600)
+SAVR_GI_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.25),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Other Bleeding #####
+matched_SAVR_data_otherbleed <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 8))
+
+fg_savr_otherbleed <- crr(ftime = matched_SAVR_data_otherbleed$ftime,
+          fstatus = matched_SAVR_data_otherbleed$Event_name,
+          cov1 = matched_SAVR_data_otherbleed$valve_type,
+          failcode = 8,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_otherbleed$ftime, 
+              fstatus = matched_SAVR_data_otherbleed$Event_name, 
+              group = matched_SAVR_data_otherbleed$valve_type)
+cif_subset <- cif[grep(paste0(" ", 8), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_otherbleed_cif.png", width = 800, height = 600)
+SAVR_otherbleed_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.3),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Ischemic Stroke #####
+matched_SAVR_data_stroke <- matched_SAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 9))
+
+fg_savr_stroke <- crr(ftime = matched_SAVR_data_stroke$ftime,
+          fstatus = matched_SAVR_data_stroke$Event_name,
+          cov1 = matched_SAVR_data_stroke$valve_type,
+          failcode = 9,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_SAVR_data_stroke$ftime, 
+              fstatus = matched_SAVR_data_stroke$Event_name, 
+              group = matched_SAVR_data_stroke$valve_type)
+cif_subset <- cif[grep(paste0(" ", 9), names(cif))]
+
+# Plot cumulative incidence
+png("SAVR_stroke_cif.png", width = 800, height = 600)
+SAVR_stroke_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.15),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+
+###################################
+#####      SAVR vs. TAVR      #####
+###################################
+
+##### Reoperation #####
+matched_TAVR_data_reop <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 3))
+
+fg_tavr_reop <- crr(ftime = matched_TAVR_data_reop$ftime,
+          fstatus = matched_TAVR_data_reop$Event_name,
+          cov1 = matched_TAVR_data_reop$valve_type,
+          failcode = 3,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_reop$ftime, 
+              fstatus = matched_TAVR_data_reop$Event_name, 
+              group = matched_TAVR_data_reop$valve_type)
+cif_subset <- cif[grep(paste0(" ", 3), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_reop_cif.png", width = 800, height = 600)
+TAVR_reop_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.05),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Congestive Heart Failure (CHF) #####
+matched_TAVR_data_CHF <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 4))
+
+fg_tavr_CHF <- crr(ftime = matched_TAVR_data_CHF$ftime,
+          fstatus = matched_TAVR_data_CHF$Event_name,
+          cov1 = matched_TAVR_data_CHF$valve_type,
+          failcode = 4,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_CHF$ftime, 
+              fstatus = matched_TAVR_data_CHF$Event_name, 
+              group = matched_TAVR_data_CHF$valve_type)
+cif_subset <- cif[grep(paste0(" ", 4), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_CHF_cif.png", width = 800, height = 600)
+TAVR_CHF_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.15),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Endocarditis #####
+matched_TAVR_data_endo <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 5))
+
+fg_tavr_endo <- crr(ftime = matched_TAVR_data_endo$ftime,
+          fstatus = matched_TAVR_data_endo$Event_name,
+          cov1 = matched_TAVR_data_endo$valve_type,
+          failcode = 5,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_endo$ftime, 
+              fstatus = matched_TAVR_data_endo$Event_name, 
+              group = matched_TAVR_data_endo$valve_type)
+cif_subset <- cif[grep(paste0(" ", 5), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_endo_cif.png", width = 800, height = 600)
+TAVR_endo_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.1),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Cerebral Hemorrhage #####
+matched_TAVR_data_cerebral <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 6))
+
+fg_tavr_cerebral <- crr(ftime = matched_TAVR_data_cerebral$ftime,
+          fstatus = matched_TAVR_data_cerebral$Event_name,
+          cov1 = matched_TAVR_data_cerebral$valve_type,
+          failcode = 6,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_cerebral$ftime, 
+              fstatus = matched_TAVR_data_cerebral$Event_name, 
+              group = matched_TAVR_data_cerebral$valve_type)
+cif_subset <- cif[grep(paste0(" ", 6), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_cerebral_cif.png", width = 800, height = 600)
+TAVR_cerebral_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.05),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for GI Bleeding #####
+matched_TAVR_data_GI <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 7))
+
+fg_tavr_GI <- crr(ftime = matched_TAVR_data_GI$ftime,
+          fstatus = matched_TAVR_data_GI$Event_name,
+          cov1 = matched_TAVR_data_GI$valve_type,
+          failcode = 7,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_GI$ftime, 
+              fstatus = matched_TAVR_data_GI$Event_name, 
+              group = matched_TAVR_data_GI$valve_type)
+cif_subset <- cif[grep(paste0(" ", 7), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_GI_cif.png", width = 800, height = 600)
+TAVR_GI_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.3),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Other Bleeding #####
+matched_TAVR_data_otherbleed <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 8))
+
+fg_tavr_otherbleed <- crr(ftime = matched_TAVR_data_otherbleed$ftime,
+          fstatus = matched_TAVR_data_otherbleed$Event_name,
+          cov1 = matched_TAVR_data_otherbleed$valve_type,
+          failcode = 8,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_otherbleed$ftime, 
+              fstatus = matched_TAVR_data_otherbleed$Event_name, 
+              group = matched_TAVR_data_otherbleed$valve_type)
+cif_subset <- cif[grep(paste0(" ", 8), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_otherbleed_cif.png", width = 800, height = 600)
+TAVR_otherbleed_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.35),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
+
+##### Readmission for Ischemic Stroke #####
+matched_TAVR_data_stroke <- matched_TAVR_data_CRM %>%
+  filter(Event_name %in% c(0, 1, 2, 9))
+
+fg_tavr_stroke <- crr(ftime = matched_TAVR_data_stroke$ftime,
+          fstatus = matched_TAVR_data_stroke$Event_name,
+          cov1 = matched_TAVR_data_stroke$valve_type,
+          failcode = 9,
+          cencode = 0)
+
+# Calculating cumulative incidence
+cif <- cuminc(ftime = matched_TAVR_data_stroke$ftime, 
+              fstatus = matched_TAVR_data_stroke$Event_name, 
+              group = matched_TAVR_data_stroke$valve_type)
+cif_subset <- cif[grep(paste0(" ", 9), names(cif))]
+
+# Plot cumulative incidence
+png("TAVR_stroke_cif.png", width = 800, height = 600)
+TAVR_stroke_cif <- plot(cif_subset, 
+     xlab = "Time", 
+     ylab = "Cumulative Incidence", 
+     main = "Cumulative Incidence by Group", 
+     lwd = 2, 
+     ylim = c(0, 0.15),
+     xlim = c(0, 1826)) # Limit x-axis to 5 years after procedure
+dev.off() 
 
 ```
 
-Supplemental Material:
+## Results {#sec-results}
 
-Code for Data Cleaning
+After patient selection, 15,081 patients were included for analysis; the average age was 69.1 years, 66.4% of patients were male, 67.1% were white, 23.4% were black, and the mean years on dialysis at the time of AVR was 4.6 years.
+
+Table 1 demonstrates the cohort characteristics by AVR type prior to propensity score matching. 2,590 patients underwent mAVR, 4,752 bAVR, and 7,739 TAVR; respectively, the mean ages were 61.5, 66.6, and 73.2 years (P\<0.001) and mean Elixhauser scores were 9.2, 9.7, and 11.3 (P\<0.001) as shown in boxplots of age and Elixhauser scores, indicating that mAVR patients were the youngest and with fewer comorbidities while TAVR patients were the oldest with highest comorbidity burden. 1,080 (41.7%) mAVR patients had a concomitant coronary artery bypass graft (CABG) compared to 2,264 (47.7%) bAVR, and rates of percutaneous coronary intervention (PCI) within 3 months of AVR were 359 (13.9%), 684 (14.4%) and 1,788 (23.1%) for mAVR, bAVR, and TAVR respectfully.
+
+```{r}
+table1_AVR
+Elix_boxplot
+age_boxplot
+```
+
+The trend of AVR type from 2009 to 2019 shows as a line plot that there is a rapid increase in the number of TAVR procedures while the number of bAVR and mAVR decrease over the period studied. By 2015, the number of TAVR procedures is greater than the number of bAVR and mAVR combined.
+
+```{r}
+year_trend
+```
+
+**Cumulative incidence figures and model summaries for mortality outcome.**
+
+**Survival was similar with RMST of 2.51 years for mAVR and 2.47 years for bAVR ( = -0.04, 95% CI: -0.15-0.07). Matching SAVR and TAVR yielded 3,796 patients each. SAVR had worse early but improved 5-year survival, RMST 2.28 versus 2.14 years**
+
+Note:
+
+-   In TAVR matched cohort, TAVR is marked with valve_type = 1. SAVR is marked with valve_type = 0.
+
+-   In SAVR matched cohort, mAVR is marked with valve_type = 1. bAVR is marked with valve_type = 0.
+
+```{r}
+summary(fg_TAVR_mort)
+knitr::include_graphics("TAVR_mort_cif.png")
+
+summary(fg_SAVR_mort)
+knitr::include_graphics("SAVR_mort_cif.png")
+```
+
+**Cumulative incidence figures and model summaries for long-term secondary outcomes.**
+
+**The figures show the cumulative incidence curves for the long-term secondary outcomes between matched mAVR and bAVR patients; Compared to mAVR, at 5 years of follow-up bAVR patients were more likely to have valve reoperation (P \< 0.05), less likely to have readmission for GI bleeding (P \< 0.05), but similar cumulative incidence of ischemic stroke readmission, CHF readmission, endocarditis readmission, and kidney transplant.**
+
+```{r}
+summary(fg_savr_reop)
+knitr::include_graphics("SAVR_reop_cif.png")
+
+summary(fg_savr_CHF)
+knitr::include_graphics("SAVR_CHF_cif.png")
+
+summary(fg_savr_endo)
+knitr::include_graphics("SAVR_endo_cif.png")
+
+summary(fg_savr_cerebral)
+knitr::include_graphics("SAVR_cerebral_cif.png")
+
+summary(fg_savr_GI)
+knitr::include_graphics("SAVR_GI_cif.png")
+
+summary(fg_savr_otherbleed)
+knitr::include_graphics("SAVR_otherbleed_cif.png")
+
+summary(fg_savr_stroke)
+knitr::include_graphics("SAVR_stroke_cif.png")
+```
+
+**Below figures show the cumulative incidence curves for the long-term secondary outcomes between matched SAVR and TAVR patients.Compared to SAVR, at 5 years TAVR patients had higher rates of CHF readmission (P \< 0.05), lower rates of endocarditis (P \< 0.05), and no significant difference in valve reintervention, bleeding complications, or ischemic stroke.**
+
+```{r}
+summary(fg_tavr_reop)
+knitr::include_graphics("TAVR_reop_cif.png")
+
+summary(fg_tavr_CHF)
+knitr::include_graphics("TAVR_CHF_cif.png")
+
+summary(fg_tavr_endo)
+knitr::include_graphics("TAVR_endo_cif.png")
+
+summary(fg_tavr_cerebral)
+knitr::include_graphics("TAVR_cerebral_cif.png")
+
+summary(fg_tavr_GI)
+knitr::include_graphics("TAVR_GI_cif.png")
+
+summary(fg_tavr_otherbleed)
+knitr::include_graphics("TAVR_otherbleed_cif.png")
+
+summary(fg_tavr_stroke)
+knitr::include_graphics("TAVR_stroke_cif.png")
+```
+
+## Conclusion
+
+In this retrospective review of Medicare patients on dialysis who underwent isolated de novo AVR, overall survival was poor but similar between matched cohorts of bAVR versus mAVR, and between SAVR versus TAVR. At 5 years of follow-up, bAVR had lower rates of bleeding but higher rates of valve reintervention compared to mAVR; meanwhile TAVR patients had higher rates of CHF readmission but lower rates of renal transplantation, and similar rates of valve reintervention. Overall, bleeding complication risks were high across the entire cohort, while rates of valve reoperation and renal transplantation were low.
+
+The study is limited by several factors. ICD coding is subject to miscoding and misidentification; we have included our coding schema in Supplemental Table 1 to allow replication and review by other investigators. On top of that, this study did not utilize Medicare Part D data which would allow for anticoagulation prescriptions to allow more accurate comparisons of bleeding risks between exposure groups.
+
+## Reference
+
+1\. Austin PC, Fine JP. Practical recommendations for reporting fine-gray model analyses for competing risk data. Stat Med 2017;36(27):4391-4400.
+
+2\. Phan K, Zhao DF, Zhou JJ, Karagaratnam A, Phan S, Yan TD. Bioprosthetic versus mechanical prostheses for valve replacement in end-stage renal disease patients: Systematic review and meta-analysis. J Thorac Dis 2016;8(5):769-777.
+
+3\. Li GY, Chen YY, Chung FP, Chien KL, Hsu CP, Lin YJ. Long-term outcomes of bioprosthetic or mechanical valve replacement in end-stage renal disease: A nationwide population-based retrospective study. Front Cardiovasc Med 2021;8:745370.
+
+4\. Williams ML, Bavaria JE, Acker MA et al. Valve selection in end-stage renal disease: Should it always be biological? Ann Thorac Surg 2016;102(5):1531-1535.
+
+5\. Sharma T, Krishnan AM, Lahoud R, Polomsky M, Dauerman HL. National trends in tavr and savr for patients with severe isolated aortic stenosis. J Am Coll Cardiol 2022;80(21):2054-2056.
+
+## Supplemental Material
+
+Codes for Data Cleaning
 
 This set of codes cannot be executed locally on my personal computer. The dataset is only accessible through UPenn PMACS HSRDC - a virtual platform to ensure data security and maintain confidentiality.
 
 ```{r}
 #| eval: false
-
 
 # Load data (replace this with your actual data loading code)
 # ESRD_patients_medpar <- read.csv("path_to_your_data.csv")
@@ -302,25 +924,3 @@ temp0606_1 <- temp0606 %>%
 valve_AVR_0606 <- temp0606_1 %>%
   filter(multiple_valves == 0, exclu_comorbidity == 0)
 ```
-
-## Results {#sec-results}
-
-Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the @sec-methods as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you'd like, but this is not required.
-
-After patient selection, 15,081 patients were included for analysis; the average age was 69.1 years, 66.4% of patients were male, 67.1% were white, 23.4% were black, and the mean years on dialysis at the time of AVR was 4.6 years. Table 1 demonstrates the cohort characteristics by AVR type prior to propensity score matching. 2,590 patients underwent mAVR, 4,752 bAVR, and 7,739 TAVR; respectively, the mean ages were 61.5, 66.6, and 73.2 years (P\<0.001) and mean Elixhauser scores were 9.2, 9.7, and 11.3 (P\<0.001) indicating that mAVR patients were the youngest and with fewer comorbidities while TAVR patients were the oldest with highest comorbidity burden. 1,080 (41.7%) mAVR patients had a concomitant coronary artery bypass graft compared to 2,264 (47.7%) bAVR, and rates of percutaneous coronary intervention within 3 months of AVR were 359 (13.9%), 684 (14.4%) and 1,788 (23.1%) for mAVR, bAVR, and TAVR respectfully.
-
-The trend of AVR type from 2009 to 2019 shows that there is a rapid increase in the number of TAVR procedures while the number of bAVR and mAVR decrease over the period studied. By 2015, the number of TAVR procedures is greater than the number of bAVR and mAVR combined.
-
-Five-Year Rates of Long-Term Secondary Outcomes Prior to Propensity Score Matching The total rate of readmission for bleeding complications was high across the entire cohort (42.6%) which included cerebral hemorrhage (2.6%), GI bleeding (25.7%) and other bleeding (35.7%). The overall rate of CHF readmission was (7.9%), endocarditis was (7.7%) and stroke was (12.4%). Overall rates of valve reoperation (2.5%) and kidney transplantation (3.6%) were low.
-
-**mAVR versus bAVR Matching and Outcomes**
-
-Figure x shows the standardized mean differences amongst matched covariates, indicating a well-balanced match. Matching yielded 2,463 patients in each group. There was no difference between mAVR or bAVR matched cohorts in terms of immediate post-surgical outcomes. Figures x show the cumulative incidence curves for the long-term secondary outcomes; Table x shows the cumulative incidences of secondary outcomes at 5 years. Compared to mAVR, at 5 years of follow-up bAVR patients were more likely to have valve reoperation, less likely to have readmission for GI bleeding, but similar cumulative incidence of ischemic stroke readmission, CHF readmission, endocarditis readmission, and kidney transplant. Table x shows the cumulative incidences at 5 years.
-
-**SAVR versus TAVR Matching and Outcomes**
-
-Figure x shows the standardized mean differences amongst matched covariates, indicating a well-balanced match. Matching yielded 3,796 patients in each group. Supplemental Table 3 shows cohort characteristics after matching. Of note, of the 3,796 SAVR patients, n (n%) patients had mAVR and n (n%) had bAVR. Table x shows the immediate postoperative outcomes by AVR type. Compared to SAVR, TAVR had lower rates of cardiac arrest, GI hemorrhage, RBC transfusion, new atrial fibrillation, and thirty-day mortality, but higher rates of complete heart block and permanent pacemaker placement.
-
-## Conclusion
-
-This the conclusion. The @sec-results can be invoked here.
